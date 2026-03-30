@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="House Hunt">
+<title>House Hunt Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:#f6f7fb;
+  --card:#ffffff;
+  --text:#243042;
+  --muted:#7a7a8c;
+  --line:#e4e7ee;
+  --shadow:0 6px 18px rgba(0,0,0,.06);
+  --accent:#4b67d1;
+  --radius:16px;
+  --safe-top: env(safe-area-inset-top);
+  --safe-bot: env(safe-area-inset-bottom);
+
+  --street:#eef6ff;
+  --kitchen:#fff4ea;
+  --primary:#eefaf2;
+  --basement:#f5f5f5;
+  --yard:#eefaf7;
+  --gym:#f3eeff;
+  --other:#fff0f5;
+  --notes:#fff9db;
+}
+
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+body {
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  padding-bottom: calc(88px + var(--safe-bot));
+}
+
+.header {
+  background:var(--text);
+  color:white;
+  padding: calc(14px + var(--safe-top)) 18px 14px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+}
+.header h1 { font-family:'Playfair Display',serif; font-size:1.6rem; line-height:1; }
+.header p { font-size:.72rem; opacity:.5; margin-top:3px; text-transform:uppercase; letter-spacing:.05em; }
+#houseCount { font-size:.78rem; font-weight:700; opacity:.55; }
+
+.tabs { display:flex; background:var(--text); padding:0 16px 14px; gap:8px; }
+.tab-btn {
+  flex:1; padding:10px 8px; border:none; border-radius:12px;
+  font-family:'DM Sans',sans-serif; font-size:.85rem; font-weight:700; cursor:pointer;
+  background:rgba(255,255,255,.12); color:rgba(255,255,255,.65);
+  transition:all .2s; -webkit-tap-highlight-color:transparent;
+}
+.tab-btn.active { background:white; color:var(--text); }
+
+.page { display:none; }
+.page.active { display:block; }
+
+.wrap { max-width:680px; margin:0 auto; padding:16px 14px 10px; }
+
+.section {
+  border-radius:var(--radius); padding:14px; margin-bottom:14px;
+  border:1px solid var(--line); box-shadow:var(--shadow);
+}
+.street   { background:var(--street); }
+.kitchen  { background:var(--kitchen); }
+.primary  { background:var(--primary); }
+.basement { background:var(--basement); }
+.yard     { background:var(--yard); }
+.gym      { background:var(--gym); }
+.other    { background:var(--other); }
+.notes    { background:var(--notes); }
+
+.section h3 { font-family:'Playfair Display',serif; font-size:1.05rem; margin-bottom:12px; }
+
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+@media(max-width:420px){ .grid { grid-template-columns:1fr; } }
+.full { grid-column:1/-1; }
+.field { display:flex; flex-direction:column; gap:5px; }
+
+label {
+  font-weight:600; font-size:.82rem; letter-spacing:.02em;
+  color:var(--muted); text-transform:uppercase;
+}
+
+input[type=text], select, textarea {
+  width:100%; padding:11px 12px; border-radius:11px;
+  border:1.5px solid var(--line); font-size:16px;
+  font-family:'DM Sans',sans-serif; background:white; color:var(--text);
+  -webkit-appearance:none; appearance:none; transition:border-color .2s;
+}
+input[type=text]:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); }
+textarea { min-height:110px; resize:vertical; }
+
+.photo-btn {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:10px 16px; background:var(--accent); color:white;
+  border-radius:11px; font-weight:700; font-size:.88rem;
+  cursor:pointer; margin-top:8px; -webkit-tap-highlight-color:transparent;
+}
+
+.photo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(82px,1fr)); gap:8px; margin-top:10px; }
+.photo-wrap { position:relative; aspect-ratio:1/1; }
+.photo-wrap img { width:100%; height:100%; object-fit:cover; border-radius:10px; border:1px solid var(--line); }
+.photo-del {
+  position:absolute; top:-7px; right:-7px; width:22px; height:22px;
+  background:#c0392b; color:white; border-radius:50%; font-size:.7rem;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; border:none; font-weight:700; -webkit-tap-highlight-color:transparent;
+}
+
+.stars { display:flex; gap:8px; margin:6px 0 4px; }
+.star { font-size:1.9rem; cursor:pointer; line-height:1; -webkit-tap-highlight-color:transparent; transition:transform .12s; }
+.star:active { transform:scale(1.3); }
+
+.bottom-bar {
+  position:fixed; bottom:0; left:0; right:0;
+  padding:12px 16px calc(12px + var(--safe-bot));
+  background:rgba(246,247,251,.96);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--line); z-index:100;
+}
+.save-btn {
+  width:100%; padding:16px; background:var(--accent); color:white;
+  border:none; border-radius:14px; font-family:'DM Sans',sans-serif;
+  font-size:1rem; font-weight:700; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; transition:transform .1s,opacity .1s;
+}
+.save-btn:active { transform:scale(.98); opacity:.9; }
+
+.saved-empty { text-align:center; padding:60px 30px; color:var(--muted); }
+.saved-empty .icon { font-size:3rem; margin-bottom:12px; }
+.saved-empty p { font-size:.95rem; line-height:1.6; }
+
+.house-card {
+  background:white; border-radius:var(--radius); margin:12px 14px;
+  box-shadow:var(--shadow); border:1px solid var(--line);
+  overflow:hidden; display:flex;
+}
+.card-bar { width:7px; flex-shrink:0; }
+.card-body { flex:1; padding:14px 12px; min-width:0; }
+.card-address { font-family:'Playfair Display',serif; font-size:1.05rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-meta { font-size:.76rem; color:var(--muted); margin-top:4px; line-height:1.6; }
+.card-stars { font-size:.9rem; margin-top:6px; color:var(--accent); }
+.card-note { font-size:.8rem; color:var(--muted); margin-top:6px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.card-actions {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; padding:12px; border-left:1px solid var(--line);
+}
+.icon-btn {
+  width:38px; height:38px; border-radius:10px; border:none;
+  background:var(--bg); font-size:1rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+}
+
+.toast {
+  position:fixed; bottom:110px; left:50%;
+  transform:translateX(-50%) translateY(10px);
+  background:var(--text); color:white;
+  padding:12px 24px; border-radius:50px;
+  font-size:.88rem; font-weight:600;
+  opacity:0; transition:all .25s; z-index:999;
+  white-space:nowrap; pointer-events:none;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>House Hunt</h1>
+    <p>Your property tracker</p>
+  </div>
+  <div id="houseCount"></div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('form')">📋 Tracker</button>
+  <button class="tab-btn" onclick="switchTab('list')">🏘 Saved Houses</button>
+</div>
+
+<!-- ── FORM ── -->
+<div class="page active" id="page-form">
+<div class="wrap">
+  <input type="hidden" id="editId">
+
+  <!-- 🏡 Street -->
+  <div class="section street">
+    <h3>🏡 Street and First Impression</h3>
+    <div class="grid">
+      <div class="field full">
+        <label>House address</label>
+        <input type="text" id="address" placeholder="123 Maple Street">
+      </div>
+      <div class="field">
+        <label>Is the street nice?</label>
+        <select id="street">
+          <option>Yes</option>
+          <option>No</option>
+          <option>Average</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Curb appeal</label>
+        <select id="curb">
+          <option>Great</option>
+          <option>Good</option>
+          <option>Fair</option>
+          <option>Poor</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Neighbors vibe</label>
+        <select id="neighbors">
+          <option>Looks good</option>
+          <option>Unsure</option>
+          <option>Concerns</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Traffic / noise</label>
+        <select id="traffic">
+          <option>Quiet</option>
+          <option>Moderate</option>
+          <option>Loud</option>
+        </select>
+      </div>
+    </div>
+    <label class="photo-btn" for="streetFile">📷 Photos</label>
+    <input type="file" id="streetFile" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'streetPhotos')">
+    <div id="streetPhotos" class="photo-grid"></div>
+  </div>
+
+  <!-- 🍽️ Kitchen -->
+  <div class="section kitchen">
+    <h3>🍽️ Kitchen</h3>
+    <div class="grid">
+      <div class="field">
+        <label>Kitchen needs remodeling?</label>
+        <select id="kitchenRemodel">
+          <option>No</option>
+          <option>Yes</option>
+          <option>Cosmetic only</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Overall feeling</label>
+        <select id="kitchenFeeling">
+          <option>5 - Love it</option>
+          <option>4 - Strong contender</option>
+          <option selected>3 - Maybe</option>
+          <option>2 - Probably not</option>
+          <option>1 - No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Counter space</label>
+        <select id="counterSpace">
+          <option>Plenty</option>
+          <option>Enough</option>
+          <option>Tight</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Storage / pantry</label>
+        <select id="pantry">
+          <option>Great</option>
+          <option>Okay</option>
+          <option>Lacking</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Appliances included?</label>
+        <select id="appliances">
+          <option>Yes — all</option>
+          <option>Some</option>
+          <option>No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Open to living area?</label>
+        <select id="kitchenOpen">
+          <option>Yes — open plan</option>
+          <option>Semi-open</option>
+          <option>Closed / separate</option>
+        </select>
+      </div>
+    </div>
+    <label class="photo-btn" for="kitchenFile">📷 Photos</label>
+    <input type="file" id="kitchenFile" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'kitchenPhotos')">
+    <div id="kitchenPhotos" class="photo-grid"></div>
+  </div>
+
+  <!-- 🛏️ Primary Bedroom -->
+  <div class="section primary">
+    <h3>🛏️ Primary Bedroom and Bath</h3>
+    <div class="grid">
+      <div class="field">
+        <label>Primary bedroom has bathroom?</label>
+        <select id="ensuite">
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Primary bedroom floor</label>
+        <select id="bedroomFloor">
+          <option>First floor</option>
+          <option>Second floor</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Closet size</label>
+        <select id="closet">
+          <option>Walk-in</option>
+          <option>Good size</option>
+          <option>Small</option>
+          <option>No closet</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Natural light</label>
+        <select id="bedroomLight">
+          <option>Bright</option>
+          <option>Moderate</option>
+          <option>Dark</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Room size</label>
+        <select id="bedroomSize">
+          <option>Spacious</option>
+          <option>Good</option>
+          <option>Small</option>
+        </select>
+      </div>
+    </div>
+    <label class="photo-btn" for="primaryFile">📷 Photos</label>
+    <input type="file" id="primaryFile" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'primaryPhotos')">
+    <div id="primaryPhotos" class="photo-grid"></div>
+  </div>
+
+  <!-- 🏠 Basement -->
+  <div class="section basement">
+    <h3>🏠 Basement</h3>
+    <div class="grid">
+      <div class="field">
+        <label>Basement finished?</label>
+        <select id="basement">
+          <option>Yes</option>
+          <option>No</option>
+          <option>Partially</option>
+          <option>No basement</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Ceiling height</label>
+        <select id="basementCeiling">
+          <option>High — 8ft+</option>
+          <option>Normal — 7ft</option>
+          <option>Low — cramped</option>
+          <option>N/A</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Any moisture / issues?</label>
+        <select id="basementIssues">
+          <option>None visible</option>
+          <option>Moisture / damp</option>
+          <option>Cracks</option>
+          <option>Yes — concerns</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Could be gym / office?</label>
+        <select id="basementPotential">
+          <option>Definitely</option>
+          <option>Maybe</option>
+          <option>No</option>
+          <option>N/A</option>
+        </select>
+      </div>
+    </div>
+    <label class="photo-btn" for="basementFile">📷 Photos</label>
+    <input type="file" id="basementFile" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'basementPhotos')">
+    <div id="basementPhotos" class="photo-grid"></div>
+  </div>
+
+  <!-- 🌳 Yard -->
+  <div class="section yard">
+    <h3>🌳 Backyard and Fence</h3>
+    <div class="grid">
+      <div class="field">
+        <label>Backyard usable?</label>
+        <select id="yard">
+          <option>Yes</option>
+          <option>No</option>
+          <option>Small</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Fence needs replacing?</label>
+        <select id="fence">
+          <option>No</option>
+          <option>Yes</option>
+          <option>Maybe</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Privacy level</label>
+        <select id="yardPrivacy">
+          <option>Very private</option>
+          <option>Some privacy</option>
+          <option>Very exposed</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Patio / deck?</label>
+        <select id="patio">
+          <option>Yes — great</option>
+          <option>Small / basic</option>
+          <option>No</option>
+        </select>
+      </div>
+    </div>
+    <label class="photo-btn" for="yardFile">📷 Photos</label>
+    <input type="file" id="yardFile" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'yardPhotos')">
+    <div id="yardPhotos" class="photo-grid"></div>
+  </div>
+
+  <!-- 🏋️ Gym / Bonus -->
+  <div class="section gym">
+    <h3>🏋️ Gym / Bonus Room</h3>
+    <div class="grid">
+      <div class="field">
+        <label>Space for a gym?</label>
+        <select id="gymSpace">
+          <option>Yes — dedicated room</option>
+          <option>Yes — basement</option>
+          <option>Yes — garage</option>
+          <option>Maybe / tight</option>
+          <option>No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Garage?</label>
+        <select id="garage">
+          <option>2-car garage</option>
+          <option>1-car garage</option>
+          <option>No garage</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Extra / bonus room?</label>
+        <select id="bonusRoom">
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Home office space?</label>
+        <select id="office">
+          <option>Yes — great spot</option>
+          <option>Possible</option>
+          <option>No</option>
+        </select>
+      </div>
+    </div>
+    <label class="photo-btn" for="gymFile">📷 Photos</label>
+    <input type="file" id="gymFile" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'gymPhotos')">
+    <div id="gymPhotos" class="photo-grid"></div>
+  </div>
+
+  <!-- 🔧 Other -->
+  <div class="section other">
+    <h3>🔧 Other Important Stuff</h3>
+    <div class="grid">
+      <div class="field">
+        <label>Roof condition</label>
+        <select id="roof">
+          <option>Looks good</option>
+          <option>Needs inspection</option>
+          <option>Needs replacing</option>
+          <option>Unknown</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>HVAC / heating</label>
+        <select id="hvac">
+          <option>Newer system</option>
+          <option>Older but working</option>
+          <option>Needs replacing</option>
+          <option>Unknown</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Laundry</label>
+        <select id="laundry">
+          <option>In-unit — main floor</option>
+          <option>In-unit — basement</option>
+          <option>Hookups only</option>
+          <option>Shared / none</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Storage space overall</label>
+        <select id="storage">
+          <option>Plenty</option>
+          <option>Enough</option>
+          <option>Lacking</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⭐️ Rating -->
+  <div class="section notes">
+    <h3>⭐️ Overall Rating</h3>
+    <label>How do you feel about this house?</label>
+    <div class="stars" id="stars">
+      <span class="star" onclick="setRating(1)">☆</span>
+      <span class="star" onclick="setRating(2)">☆</span>
+      <span class="star" onclick="setRating(3)">☆</span>
+      <span class="star" onclick="setRating(4)">☆</span>
+      <span class="star" onclick="setRating(5)">☆</span>
+    </div>
+    <input type="hidden" id="rating" value="0">
+  </div>
+
+  <!-- 📝 Notes -->
+  <div class="section notes">
+    <h3>📝 Notes</h3>
+    <textarea id="notes" placeholder="What stood out? Any red flags? Price thoughts, gut feeling…"></textarea>
+  </div>
+
+</div>
+</div>
+
+<!-- ── SAVED LIST ── -->
+<div class="page" id="page-list">
+  <div id="houseList"></div>
+</div>
+
+<div class="bottom-bar" id="bottomBar">
+  <button class="save-btn" id="saveBtn" onclick="saveHouse()">💾 Save House</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let houses = [];
+let currentPhotos = { streetPhotos:[], kitchenPhotos:[], primaryPhotos:[], basementPhotos:[], yardPhotos:[], gymPhotos:[] };
+let currentRating = 0;
+
+function persist() {
+  try { localStorage.setItem('houseHunt_v4', JSON.stringify(houses)); }
+  catch(e) { showToast('⚠️ Storage full — try fewer photos'); }
+}
+function load() {
+  try { const d = localStorage.getItem('houseHunt_v4'); houses = d ? JSON.parse(d) : []; }
+  catch(e) { houses = []; }
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active',(i===0&&tab==='form')||(i===1&&tab==='list')));
+  document.getElementById('page-form').classList.toggle('active', tab==='form');
+  document.getElementById('page-list').classList.toggle('active', tab==='list');
+  document.getElementById('bottomBar').style.display = tab==='form' ? 'block' : 'none';
+  if (tab==='list') renderList();
+  updateCount();
+}
+
+function addPhotos(event, targetId) {
+  for (let file of event.target.files) {
+    const reader = new FileReader();
+    reader.onload = e => { currentPhotos[targetId].push(e.target.result); renderPhotos(targetId); };
+    reader.readAsDataURL(file);
+  }
+  event.target.value = '';
+}
+function renderPhotos(targetId) {
+  const c = document.getElementById(targetId);
+  c.innerHTML = currentPhotos[targetId].map((src,i) =>
+    `<div class="photo-wrap"><img src="${src}"><button class="photo-del" onclick="deletePhoto('${targetId}',${i})">✕</button></div>`
+  ).join('');
+}
+function deletePhoto(targetId, i) { currentPhotos[targetId].splice(i,1); renderPhotos(targetId); }
+
+function setRating(n) {
+  currentRating = n;
+  document.getElementById('rating').value = n;
+  document.querySelectorAll('.star').forEach((s,i) => s.textContent = i < n ? '★' : '☆');
+}
+function applyRating(n) {
+  currentRating = n;
+  document.querySelectorAll('.star').forEach((s,i) => s.textContent = i < n ? '★' : '☆');
+}
+
+function gv(id) { const el=document.getElementById(id); return el?el.value:''; }
+function sv(id,val) { const el=document.getElementById(id); if(el&&val!==undefined) el.value=val; }
+
+const SELECTS = ['street','curb','neighbors','traffic','kitchenRemodel','kitchenFeeling','counterSpace','pantry','appliances','kitchenOpen','ensuite','bedroomFloor','closet','bedroomLight','bedroomSize','basement','basementCeiling','basementIssues','basementPotential','yard','fence','yardPrivacy','patio','gymSpace','garage','bonusRoom','office','roof','hvac','laundry','storage'];
+
+function resetForm() {
+  document.getElementById('editId').value = '';
+  document.getElementById('address').value = '';
+  document.getElementById('notes').value = '';
+  SELECTS.forEach(id => { const el=document.getElementById(id); if(el) el.selectedIndex=0; });
+  currentPhotos = { streetPhotos:[], kitchenPhotos:[], primaryPhotos:[], basementPhotos:[], yardPhotos:[], gymPhotos:[] };
+  ['streetPhotos','kitchenPhotos','primaryPhotos','basementPhotos','yardPhotos','gymPhotos'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=''; });
+  applyRating(0);
+  document.getElementById('saveBtn').textContent = '💾 Save House';
+}
+
+function saveHouse() {
+  const address = gv('address').trim();
+  if (!address) { showToast('⚠️ Please enter an address'); return; }
+  const editId = gv('editId');
+  const house = {
+    id: editId || Date.now().toString(),
+    address,
+    street:gv('street'), curb:gv('curb'), neighbors:gv('neighbors'), traffic:gv('traffic'),
+    kitchenRemodel:gv('kitchenRemodel'), kitchenFeeling:gv('kitchenFeeling'),
+    counterSpace:gv('counterSpace'), pantry:gv('pantry'), appliances:gv('appliances'), kitchenOpen:gv('kitchenOpen'),
+    ensuite:gv('ensuite'), bedroomFloor:gv('bedroomFloor'), closet:gv('closet'), bedroomLight:gv('bedroomLight'), bedroomSize:gv('bedroomSize'),
+    basement:gv('basement'), basementCeiling:gv('basementCeiling'), basementIssues:gv('basementIssues'), basementPotential:gv('basementPotential'),
+    yard:gv('yard'), fence:gv('fence'), yardPrivacy:gv('yardPrivacy'), patio:gv('patio'),
+    gymSpace:gv('gymSpace'), garage:gv('garage'), bonusRoom:gv('bonusRoom'), office:gv('office'),
+    roof:gv('roof'), hvac:gv('hvac'), laundry:gv('laundry'), storage:gv('storage'),
+    notes:gv('notes'), rating:currentRating,
+    photos:JSON.parse(JSON.stringify(currentPhotos)),
+    savedAt:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+  };
+  if (editId) { const idx=houses.findIndex(x=>x.id===editId); if(idx>-1) houses[idx]=house; else houses.unshift(house); }
+  else houses.unshift(house);
+  persist();
+  showToast('✅ House saved!');
+  setTimeout(() => { resetForm(); switchTab('list'); }, 700);
+}
+
+function editHouse(id) {
+  const h = houses.find(x=>x.id===id); if(!h) return;
+  resetForm();
+  document.getElementById('editId').value = id;
+  document.getElementById('address').value = h.address||'';
+  document.getElementById('notes').value = h.notes||'';
+  SELECTS.forEach(key => sv(key, h[key]));
+  currentPhotos = JSON.parse(JSON.stringify(h.photos||{streetPhotos:[],kitchenPhotos:[],primaryPhotos:[],basementPhotos:[],yardPhotos:[],gymPhotos:[]}));
+  ['streetPhotos','kitchenPhotos','primaryPhotos','basementPhotos','yardPhotos','gymPhotos'].forEach(id=>renderPhotos(id));
+  applyRating(h.rating||0);
+  document.getElementById('saveBtn').textContent = '✏️ Update House';
+  switchTab('form');
+  window.scrollTo(0,0);
+}
+
+function deleteHouse(id) {
+  if (!confirm('Delete this house?')) return;
+  houses = houses.filter(x=>x.id!==id);
+  persist(); renderList(); updateCount();
+}
+
+function updateCount() {
+  const el = document.getElementById('houseCount');
+  el.textContent = houses.length ? `${houses.length} house${houses.length>1?'s':''}` : '';
+}
+
+function renderList() {
+  updateCount();
+  const container = document.getElementById('houseList');
+  if (!houses.length) {
+    container.innerHTML = `<div class="saved-empty"><div class="icon">🏡</div><p>No houses saved yet.<br>Tap <strong>Tracker</strong> to add your first one!</p></div>`;
+    return;
+  }
+  const barColors = ['#aaa','#e74c3c','#e67e22','#f1c40f','#3498db','#2ecc71'];
+  const ratingLabels = ['','No','Probably not','Maybe','Strong contender','Love it!'];
+  container.innerHTML = houses.map(h => {
+    const r = h.rating||0;
+    const stars = '★'.repeat(r)+'☆'.repeat(5-r);
+    return `
+    <div class="house-card">
+      <div class="card-bar" style="background:${barColors[r]}"></div>
+      <div class="card-body">
+        <div class="card-address">${h.address}</div>
+        <div class="card-meta">
+          ${h.savedAt||''}<br>
+          Kitchen: ${h.kitchenRemodel} · Yard: ${h.yard} · Gym: ${h.gymSpace||'—'}
+        </div>
+        <div class="card-stars">${stars}${r?` <span style="font-size:.76rem;color:var(--muted)">${ratingLabels[r]}</span>`:''}
+        </div>
+        ${h.notes?`<div class="card-note">${h.notes}</div>`:''}
+      </div>
+      <div class="card-actions">
+        <button class="icon-btn" onclick="editHouse('${h.id}')">✏️</button>
+        <button class="icon-btn" onclick="deleteHouse('${h.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+load();
+updateCount();
+</script>
+</body>
+</html>
